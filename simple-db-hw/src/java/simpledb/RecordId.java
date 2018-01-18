@@ -30,7 +30,7 @@ public class RecordId implements Serializable {
     /**
      * @return the tuple number this RecordId references.
      */
-    public int gettuplenober() {
+    public int getTupleNumber() {
         // some code goes here
         return tupleno;
     }
@@ -52,7 +52,11 @@ public class RecordId implements Serializable {
     @Override
     public boolean equals(Object o) {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        if (o != null && o instanceof RecordId) {
+          RecordId rid = (RecordId) o;
+          return pid.equals(rid.pid) && tupleno == rid.tupleno;
+        }
+        return false;
     }
 
     /**
@@ -64,8 +68,7 @@ public class RecordId implements Serializable {
     @Override
     public int hashCode() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
-
+        return tupleno << 16 + pid.hashCode();
     }
 
 }
