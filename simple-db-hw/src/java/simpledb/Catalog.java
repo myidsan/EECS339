@@ -13,10 +13,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * For now, this is a stub catalog that must be populated with tables by a
  * user program before it can be used -- eventually, this should be converted
  * to a catalog that reads a catalog table from disk.
- * 
+ *
  * @Threadsafe
  */
 public class Catalog {
+
+    private Map<Integer, DbFile> id2table;
+    private Map<Integer, TupleDesc> id2tupleDesc;
+    private Map<String, Integer> name2id;
+    private Map<Integer, String> id2name;
+    private Map<Integer, String> pkey;
 
     /**
      * Constructor.
@@ -24,6 +30,11 @@ public class Catalog {
      */
     public Catalog() {
         // some code goes here
+        id2table = new ConcurrentHashMap<Integer, DbFile>();
+        id2tupleDesc = new ConcurrentHashMap<Integer, TupleDesc>();
+        name2id = new ConcurrentHashMap<String, Integer>();
+        id2name = new ConcurrentHashMap<Integer, String>();
+        pkey = new ConcurrentHashMap<Integer, String>();
     }
 
     /**
@@ -37,6 +48,11 @@ public class Catalog {
      */
     public void addTable(DbFile file, String name, String pkeyField) {
         // some code goes here
+        id2tupleDesc.put(file.getId(),file.getTupleDesc());
+        id2table.put(file.getId(), file);
+        name2id.put(name, file.getId());
+        id2name.put(file.getId(), name);
+        pkey.put(file.getId(), pkeyField);
     }
 
     public void addTable(DbFile file, String name) {
@@ -60,7 +76,13 @@ public class Catalog {
      */
     public int getTableId(String name) throws NoSuchElementException {
         // some code goes here
-        return 0;
+        if (name == null) {
+          throw new NoSuchElementException("cannot have null as input");
+        }
+        if (name2id.get(name) == null) {
+          throw new NoSuchElementException("cannot find associated id");
+        }
+        return name2id.get(name).intValue();
     }
 
     /**
@@ -71,7 +93,7 @@ public class Catalog {
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        return id2tupleDesc.get(new Integer(tableid));
     }
 
     /**
@@ -82,29 +104,34 @@ public class Catalog {
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        return id2table.get(tableid);
     }
 
     public String getPrimaryKey(int tableid) {
         // some code goes here
-        return null;
+        return pkey.get(tableid);
     }
 
     public Iterator<Integer> tableIdIterator() {
         // some code goes here
-        return null;
+        return id2table.keySet().iterator();
     }
 
     public String getTableName(int id) {
         // some code goes here
-        return null;
+        return id2name.get(id);
     }
-    
+
     /** Delete all tables from the catalog */
     public void clear() {
         // some code goes here
+        id2table.clear();
+        id2tupleDesc.clear();
+        name2id.clear();
+        id2name.clear();
+        pkey.clear();
     }
-    
+
     /**
      * Reads the schema from a file and creates the appropriate tables in the database.
      * @param catalogFile
@@ -114,7 +141,7 @@ public class Catalog {
         String baseFolder=new File(new File(catalogFile).getAbsolutePath()).getParent();
         try {
             BufferedReader br = new BufferedReader(new FileReader(new File(catalogFile)));
-            
+
             while ((line = br.readLine()) != null) {
                 //assume line is of the format name (field type, field type, ...)
                 String name = line.substring(0, line.indexOf("(")).trim();
@@ -160,4 +187,3 @@ public class Catalog {
         }
     }
 }
-
