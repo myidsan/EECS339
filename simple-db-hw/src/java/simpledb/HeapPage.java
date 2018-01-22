@@ -79,7 +79,7 @@ public class HeapPage implements Page {
     private int getHeaderSize() {
 
         // some code goes here
-        return (int)Math.ceil(this.numSlots/8);
+        return (int)Math.ceil((double)this.numSlots/8);
 
     }
 
@@ -315,12 +315,34 @@ public class HeapPage implements Page {
      */
     public Iterator<Tuple> iterator() {
         // some code goes here
-        ArrayList<Tuple> tuplesInUse = new ArrayList<Tuple>();
-        for (int i=0;i<tuples.length;i++){
-            if (isSlotUsed(i)){
-                tuplesInUse.add(tuples[i]);
+        // ArrayList<Tuple> tuplesInUse = new ArrayList<Tuple>();
+        // for (int i=0;i<tuples.length;i++){
+        //     if (isSlotUsed(i)){
+        //         tuplesInUse.add(tuples[i]);
+        //     }
+        // }
+        // return new HeapPageIterator<Tuple>(tuplesInUse);
+        return new HeapPageIterator(this);
+    }
+
+    // protected method used by the iterator to get the ith tuple
+    // out of this page
+    Tuple getTuple(int i) throws NoSuchElementException {
+
+        if (i >= tuples.length)
+            throw new NoSuchElementException();
+
+        try {
+            if(!isSlotUsed(i)) {
+                Debug.log(1, "HeapPage.getTuple: slot %d in %d:%d is not used", i, pid.getTableId(), pid.getPageNumber());
+                return null;
             }
+
+            Debug.log(1, "HeapPage.getTuple: returning tuple %d", i);
+            return tuples[i];
+
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new NoSuchElementException();
         }
-        return new HeapPageIterator<Tuple>(tuplesInUse);
     }
 }

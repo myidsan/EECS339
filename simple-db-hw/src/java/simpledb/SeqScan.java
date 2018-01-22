@@ -11,6 +11,13 @@ public class SeqScan implements OpIterator {
 
     private static final long serialVersionUID = 1L;
 
+    private boolean isOpen = false;
+    private TransactionId tid;
+    private TupleDesc td;
+    private DbFileIterator iter;
+    private String tablename;
+    private String alias;
+
     /**
      * Creates a sequential scan over the specified table as a part of the
      * specified transaction.
@@ -28,7 +35,8 @@ public class SeqScan implements OpIterator {
      *            tableAlias.null, or null.null).
      */
     public SeqScan(TransactionId tid, int tableid, String tableAlias) {
-        // some code goes here
+        this.tid = tid;
+        reset(tableid,tableAlias);
     }
 
     /**
@@ -37,7 +45,7 @@ public class SeqScan implements OpIterator {
      *       be the actual name of the table in the catalog of the database
      * */
     public String getTableName() {
-        return null;
+        return this.tablename;
     }
 
     /**
@@ -45,8 +53,7 @@ public class SeqScan implements OpIterator {
      * */
     public String getAlias()
     {
-        // some code goes here
-        return null;
+        return this.alias;
     }
 
     /**
@@ -62,49 +69,72 @@ public class SeqScan implements OpIterator {
      *            tableAlias.null, or null.null).
      */
     public void reset(int tableid, String tableAlias) {
-        // some code goes here
+        this.isOpen=false;
+        this.alias = tableAlias;
+        // this.tablename = tableid;
+        this.tablename = Database.getCatalog().getTableName(tableid);
+        this.iter = Database.getCatalog().getDatabaseFile(tableid).iterator(tid);
+        td = Database.getCatalog().getTupleDesc(tableid);
+        String[] newNames = new String[td.numFields()];
+        Type[] newTypes = new Type[td.numFields()];
+        for (int i = 0; i < td.numFields(); i++) {
+            String name = td.getFieldName(i);
+            Type t = td.getFieldType(i);
+
+            newNames[i] = tableAlias + "." + name;
+            newTypes[i] = t;
+        }
+        td = new TupleDesc(newTypes, newNames);
     }
 
-    public SeqScan(TransactionId tid, int tableId) {
-        this(tid, tableId, Database.getCatalog().getTableName(tableId));
+    public SeqScan(TransactionId tid, int tableid) {
+        this(tid, tableid, Database.getCatalog().getTableName(tableid));
     }
 
     public void open() throws DbException, TransactionAbortedException {
-        // some code goes here
+        if (isOpen)
+            throw new DbException("double open on one DbIterator.");
+
+        iter.open();
+        isOpen = true;
     }
 
     /**
      * Returns the TupleDesc with field names from the underlying HeapFile,
      * prefixed with the tableAlias string from the constructor. This prefix
      * becomes useful when joining tables containing a field(s) with the same
-     * name.  The alias and name should be separated with a "." character
-     * (e.g., "alias.fieldName").
+     * name.
      *
      * @return the TupleDesc with field names from the underlying HeapFile,
      *         prefixed with the tableAlias string from the constructor.
      */
     public TupleDesc getTupleDesc() {
-        // some code goes here
-        return null;
+        return td;
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {
-        // some code goes here
-        return false;
+        if (!isOpen)
+            throw new IllegalStateException("iterator is closed");
+        return iter.hasNext();
     }
 
     public Tuple next() throws NoSuchElementException,
             TransactionAbortedException, DbException {
-        // some code goes here
-        return null;
+        if (!isOpen)
+            throw new IllegalStateException("iterator is closed");
+
+        return iter.next();
+
     }
 
     public void close() {
-        // some code goes here
+        iter.close();
+        isOpen = false;
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
-        // some code goes here
+        close();
+        open();
     }
 }
