@@ -1,14 +1,9 @@
 package simpledb;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Random;
-import java.util.Vector;
-
-import java.util.HashMap;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -23,18 +18,17 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class BufferPool {
     /** Bytes per page, including header. */
-    private static final int PAGE_SIZE = 4096;
+    private static final int DEFAULT_PAGE_SIZE = 4096;
 
-    private static int pageSize = PAGE_SIZE;
+    private static int pageSize = DEFAULT_PAGE_SIZE;
 
     /** Default number of pages passed to the constructor. This is used by
     other classes. BufferPool should use the numPages argument to the
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
 
-    private final Random random = new Random();
-    final int numPages;   // number of pages -- currently, not enforced
-    final ConcurrentHashMap<PageId,Page> pages; // hash table storing current pages in memory
+    private HashMap<PageId, Page> m_cache;
+    private int m_maxNumPages;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -42,8 +36,9 @@ public class BufferPool {
      * @param numPages maximum number of pages in this buffer pool.
      */
     public BufferPool(int numPages) {
-        this.numPages = numPages;
-        this.pages = new ConcurrentHashMap<PageId, Page>();
+        // some code goes here
+        m_maxNumPages = numPages;
+        m_cache = new HashMap<PageId, Page>();
     }
 
     public static int getPageSize() {
@@ -57,7 +52,7 @@ public class BufferPool {
 
     // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
     public static void resetPageSize() {
-    	BufferPool.pageSize = PAGE_SIZE;
+    	BufferPool.pageSize = DEFAULT_PAGE_SIZE;
     }
 
     /**
@@ -68,20 +63,30 @@ public class BufferPool {
      * The retrieved page should be looked up in the buffer pool.  If it
      * is present, it should be returned.  If it is not present, it should
      * be added to the buffer pool and returned.  If there is insufficient
-     * space in the buffer pool, an page should be evicted and the new page
+     * space in the buffer pool, a page should be evicted and the new page
      * should be added in its place.
      *
      * @param tid the ID of the transaction requesting the page
      * @param pid the ID of the requested page
      * @param perm the requested permissions on the page
      */
-
-
-    // For Lab 4, make sure that reads from getPage are synchronized()
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
+        // some code goes here
+        if (m_cache.containsKey(pid)) {
+    		return m_cache.get(pid);
+    	}
+    	else {
+    		if (m_cache.size() >= m_maxNumPages){
+    			evictPage();
+    		}
+			DbFile dbfile = Database.getCatalog().getDatabaseFile(pid.getTableId());
+			Page newPage = dbfile.readPage(pid);
+			m_cache.put(pid, newPage);
+			return newPage;
+    	}
 
-	         return null;
+        // return null;
     }
 
     /**
@@ -95,6 +100,7 @@ public class BufferPool {
      */
     public  void releasePage(TransactionId tid, PageId pid) {
         // some code goes here
+        // not necessary for lab1|lab2
     }
 
     /**
@@ -104,6 +110,7 @@ public class BufferPool {
      */
     public void transactionComplete(TransactionId tid) throws IOException {
         // some code goes here
+        // not necessary for lab1|lab2
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
@@ -123,6 +130,7 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid, boolean commit)
         throws IOException {
         // some code goes here
+        // not necessary for lab1|lab2
     }
 
     /**
@@ -140,11 +148,10 @@ public class BufferPool {
      * @param tableId the table to add the tuple to
      * @param t the tuple to add
      */
-
-    // For Lab 4, make sure that inserts are synchronized()
     public void insertTuple(TransactionId tid, int tableId, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
-
+        // some code goes here
+        // not necessary for lab1
     }
 
     /**
@@ -160,12 +167,10 @@ public class BufferPool {
      * @param tid the transaction deleting the tuple.
      * @param t the tuple to delete
      */
-
-
-    // For Lab 4, make sure that deletes are synchronized()
     public  void deleteTuple(TransactionId tid, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
-
+        // some code goes here
+        // not necessary for lab1
     }
 
     /**
@@ -174,10 +179,8 @@ public class BufferPool {
      *     break simpledb if running in NO STEAL mode.
      */
     public synchronized void flushAllPages() throws IOException {
-        /* calls flushPage() for each page in the BufferPool */
-        Iterator<PageId> i = pages.keySet().iterator();
-        while(i.hasNext())
-            flushPage(i.next());
+        // some code goes here
+        // not necessary for lab1
 
     }
 
@@ -190,10 +193,8 @@ public class BufferPool {
         are removed from the cache so they can be reused safely
     */
     public synchronized void discardPage(PageId pid) {
-        Page p = pages.get(pid);
-        if (p != null) {
-            pages.remove(pid);
-        }
+        // some code goes here
+        // not necessary for lab1
     }
 
     /**
@@ -201,29 +202,24 @@ public class BufferPool {
      * @param pid an ID indicating the page to flush
      */
     private synchronized  void flushPage(PageId pid) throws IOException {
-
-        Page p = pages.get(pid);
-        if (p == null)
-            return; //not in buffer pool -- doesn't need to be flushed
-
-        DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
-        file.writePage(p);
-        p.markDirty(false, null);
+        // some code goes here
+        // not necessary for lab1
     }
 
     /** Write all pages of the specified transaction to disk.
      */
     public synchronized  void flushPages(TransactionId tid) throws IOException {
         // some code goes here
+        // not necessary for lab1|lab2
     }
 
     /**
      * Discards a page from the buffer pool.
      * Flushes the page to disk to ensure dirty pages are updated on disk.
      */
-
-    // For Lab 4 it is crucial that evicted pages do not belong to uncommitted transactions if they are dirty
     private synchronized  void evictPage() throws DbException {
-
+        // some code goes here
+        // not necessary for lab1
     }
+
 }
