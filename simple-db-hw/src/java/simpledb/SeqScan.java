@@ -11,12 +11,11 @@ public class SeqScan implements OpIterator {
 
     private static final long serialVersionUID = 1L;
 
-    private boolean isOpen = false;
     private TransactionId tid;
-    private TupleDesc td;
+    private int tableId;
+    private String tableAlias;
+    private DbFile file;
     private DbFileIterator iter;
-    private String tablename;
-    private String alias;
 
     /**
      * Creates a sequential scan over the specified table as a part of the
@@ -35,8 +34,11 @@ public class SeqScan implements OpIterator {
      *            tableAlias.null, or null.null).
      */
     public SeqScan(TransactionId tid, int tableid, String tableAlias) {
-        this.tid = tid;
-        reset(tableid,tableAlias);
+      tid = tid;
+      tableAlias = tableAlias;
+      tableId = tableid;
+      file = Database.getCatalog().getDatabaseFile(tableid);
+      iter = file.iterator(tid);
     }
 
     /**
@@ -45,7 +47,7 @@ public class SeqScan implements OpIterator {
      *       be the actual name of the table in the catalog of the database
      * */
     public String getTableName() {
-        return this.tablename;
+    	return Database.getCatalog().getTableName(tableId);
     }
 
     /**
@@ -53,7 +55,7 @@ public class SeqScan implements OpIterator {
      * */
     public String getAlias()
     {
-        return this.alias;
+      return tableAlias;
     }
 
     /**
@@ -69,34 +71,16 @@ public class SeqScan implements OpIterator {
      *            tableAlias.null, or null.null).
      */
     public void reset(int tableid, String tableAlias) {
-        this.isOpen=false;
-        this.alias = tableAlias;
-        // this.tablename = tableid;
-        this.tablename = Database.getCatalog().getTableName(tableid);
-        this.iter = Database.getCatalog().getDatabaseFile(tableid).iterator(tid);
-        td = Database.getCatalog().getTupleDesc(tableid);
-        String[] newNames = new String[td.numFields()];
-        Type[] newTypes = new Type[td.numFields()];
-        for (int i = 0; i < td.numFields(); i++) {
-            String name = td.getFieldName(i);
-            Type t = td.getFieldType(i);
-
-            newNames[i] = tableAlias + "." + name;
-            newTypes[i] = t;
-        }
-        td = new TupleDesc(newTypes, newNames);
+      tableId = tableid;
+      tableAlias = tableAlias;
     }
 
     public SeqScan(TransactionId tid, int tableid) {
-        this(tid, tableid, Database.getCatalog().getTableName(tableid));
+      this(tid, tableid, Database.getCatalog().getTableName(tableid));
     }
 
     public void open() throws DbException, TransactionAbortedException {
-        if (isOpen)
-            throw new DbException("double open on one DbIterator.");
-
-        iter.open();
-        isOpen = true;
+      iter.open();
     }
 
     /**
@@ -109,32 +93,32 @@ public class SeqScan implements OpIterator {
      *         prefixed with the tableAlias string from the constructor.
      */
     public TupleDesc getTupleDesc() {
-        return td;
+    	TupleDesc origTupleDesc = Database.getCatalog().getTupleDesc(tableId);
+    	int tdSize = origTupleDesc.numFields();
+    	Type [] newTypes = new Type[tdSize];
+    	String [] newFields = new String[tdSize];
+    	for (int i = 0; i < tdSize; i++){
+    		newTypes[i] = origTupleDesc.getFieldType(i);
+    		newFields[i] = tableAlias + "." + origTupleDesc.getFieldName(i);
+    	}
+    	return new TupleDesc(newTypes, newFields);
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {
-        if (!isOpen)
-            throw new IllegalStateException("iterator is closed");
-        return iter.hasNext();
+      return iter.hasNext();
     }
 
     public Tuple next() throws NoSuchElementException,
             TransactionAbortedException, DbException {
-        if (!isOpen)
-            throw new IllegalStateException("iterator is closed");
-
-        return iter.next();
-
+      return iter.next();
     }
 
     public void close() {
-        iter.close();
-        isOpen = false;
+      iter.close();
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
-        close();
-        open();
+      iter.rewind();
     }
 }

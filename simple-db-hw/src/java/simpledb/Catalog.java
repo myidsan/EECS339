@@ -5,7 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 /**
  * The Catalog keeps track of all available tables in the database and their
@@ -18,11 +18,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Catalog {
 
-    private Map<Integer, DbFile> id2table;
-    private Map<Integer, TupleDesc> id2tupleDesc;
-    private Map<String, Integer> name2id;
-    private Map<Integer, String> id2name;
-    private Map<Integer, String> pkey;
+    private HashMap<Integer, DbFile> id2table;
+    private HashMap<Integer, TupleDesc> id2tupleDesc;
+    private HashMap<String, Integer> name2id;
+    private HashMap<Integer, String> id2name;
+    private HashMap<Integer, String> pkey;
 
     /**
      * Constructor.
@@ -30,11 +30,11 @@ public class Catalog {
      */
     public Catalog() {
         // some code goes here
-        id2table = new ConcurrentHashMap<Integer, DbFile>();
-        id2tupleDesc = new ConcurrentHashMap<Integer, TupleDesc>();
-        name2id = new ConcurrentHashMap<String, Integer>();
-        id2name = new ConcurrentHashMap<Integer, String>();
-        pkey = new ConcurrentHashMap<Integer, String>();
+        id2table = new HashMap<Integer, DbFile>();
+        id2tupleDesc = new HashMap<Integer, TupleDesc>();
+        name2id = new HashMap<String, Integer>();
+        id2name = new HashMap<Integer, String>();
+        pkey = new HashMap<Integer, String>();
     }
 
     /**

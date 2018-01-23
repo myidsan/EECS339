@@ -27,8 +27,8 @@ public class BufferPool {
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
 
-    private HashMap<PageId, Page> m_cache;
-    private int m_maxNumPages;
+    private HashMap<PageId, Page> cache;
+    private int maxNumPages;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -37,8 +37,8 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // some code goes here
-        m_maxNumPages = numPages;
-        m_cache = new HashMap<PageId, Page>();
+        maxNumPages = numPages;
+        cache = new HashMap<PageId, Page>();
     }
 
     public static int getPageSize() {
@@ -73,20 +73,19 @@ public class BufferPool {
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
-        if (m_cache.containsKey(pid)) {
-    		return m_cache.get(pid);
+        if (cache.containsKey(pid)) {
+    		return cache.get(pid);
     	}
     	else {
-    		if (m_cache.size() >= m_maxNumPages){
-    			evictPage();
+    		if (cache.size() >= maxNumPages){
+          throw new DbException("there should be evictPage here");
+    			// evictPage();
     		}
 			DbFile dbfile = Database.getCatalog().getDatabaseFile(pid.getTableId());
 			Page newPage = dbfile.readPage(pid);
-			m_cache.put(pid, newPage);
+			cache.put(pid, newPage);
 			return newPage;
     	}
-
-        // return null;
     }
 
     /**

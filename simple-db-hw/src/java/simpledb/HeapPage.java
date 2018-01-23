@@ -162,64 +162,47 @@ public class HeapPage implements Page {
      * @return A byte array correspond to the bytes of this page.
      */
     public byte[] getPageData() {
-        int len = BufferPool.getPageSize();
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(len);
-        DataOutputStream dos = new DataOutputStream(baos);
+      int len = BufferPool.getPageSize();
+      ByteArrayOutputStream byteArrOS = new ByteArrayOutputStream(len);
+      DataOutputStream dataOS = new DataOutputStream(byteArrOS);
 
-        // create the header of the page
-        for (int i=0; i<header.length; i++) {
+      // create the header of the page
+      for (int i=0; i<header.length; i++) {
+        try {
+            dataOS.writeByte(header[i]);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+      }
+
+      // create the tuples
+      for (int i=0; i<tuples.length; i++) {
+        // empty slot
+        if (!isSlotUsed(i)) {
+          for (int j=0; j<td.getSize(); j++) {
             try {
-                dos.writeByte(header[i]);
+              dataOS.writeByte(0);
             } catch (IOException e) {
-                // this really shouldn't happen
-                e.printStackTrace();
+              e.printStackTrace();
+              return null;
             }
+          }
+          continue;
         }
 
-        // create the tuples
-        for (int i=0; i<tuples.length; i++) {
-
-            // empty slot
-            if (!isSlotUsed(i)) {
-                for (int j=0; j<td.getSize(); j++) {
-                    try {
-                        dos.writeByte(0);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                }
-                continue;
-            }
-
-            // non-empty slot
-            for (int j=0; j<td.numFields(); j++) {
-                Field f = tuples[i].getField(j);
-                try {
-                    f.serialize(dos);
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        // padding
-        int zerolen = BufferPool.getPageSize() - (header.length + td.getSize() * tuples.length); //- numSlots * td.getSize();
-        byte[] zeroes = new byte[zerolen];
-        try {
-            dos.write(zeroes, 0, zerolen);
-        } catch (IOException e) {
+        // non-empty slot
+        for (int j=0; j<td.numFields(); j++) {
+          Field f = tuples[i].getField(j);
+          try {
+            f.serialize(dataOS);
+          } catch (IOException e) {
             e.printStackTrace();
+          }
         }
+      }
 
-        try {
-            dos.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return baos.toByteArray();
+      return byteArrOS.toByteArray();
     }
 
     /**
@@ -233,7 +216,7 @@ public class HeapPage implements Page {
      */
     public static byte[] createEmptyPageData() {
         int len = BufferPool.getPageSize();
-        return new byte[len]; //all 0
+        return new byte[len];
     }
 
     /**
@@ -296,9 +279,9 @@ public class HeapPage implements Page {
      * Returns true if associated slot on this page is filled.
      */
     public boolean isSlotUsed(int i) {
-      int headerbit = i % 8;
-      int headerbyte = (i - headerbit) / 8;
-      return (header[headerbyte] & (1 << headerbit)) != 0;
+      int headerBit = i % 8;
+      int headerByte = (i - headerBit) / 8;
+      return (header[headerByte] & (1 << headerBit)) != 0;
     }
 
     /**
@@ -334,11 +317,8 @@ public class HeapPage implements Page {
 
         try {
             if(!isSlotUsed(i)) {
-                Debug.log(1, "HeapPage.getTuple: slot %d in %d:%d is not used", i, pid.getTableId(), pid.getPageNumber());
                 return null;
             }
-
-            Debug.log(1, "HeapPage.getTuple: returning tuple %d", i);
             return tuples[i];
 
         } catch (ArrayIndexOutOfBoundsException e) {
