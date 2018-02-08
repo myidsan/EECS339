@@ -4,7 +4,7 @@ import java.util.*;
 import java.io.*;
 
 /**
- * Each instance of HeapPage stores data for one page of HeapFiles and
+ * Each instance of HeapPage stores data for one page of HeapFiles and 
  * implements the Page interface that is used by BufferPool.
  *
  * @see HeapFile
@@ -13,17 +13,17 @@ import java.io.*;
  */
 public class HeapPage implements Page {
 
-    private HeapPageId pid;
-    private TupleDesc td;
-    private byte header[];
-    private Tuple tuples[];
-    private int numSlots;
-
-    private volatile boolean isDirty;
-    private volatile TransactionId dirtyTid;
+    final HeapPageId pid;
+    final TupleDesc td;
+    final byte header[];
+    final Tuple tuples[];
+    final int numSlots;
 
     byte[] oldData;
     private final Byte oldDataLock=new Byte((byte)0);
+    
+    private boolean m_isDirty;
+    private TransactionId m_dirtyTid;
 
     /**
      * Create a HeapPage from a set of bytes of data read from disk.
@@ -51,7 +51,7 @@ public class HeapPage implements Page {
         header = new byte[getHeaderSize()];
         for (int i=0; i<header.length; i++)
             header[i] = dis.readByte();
-
+        
         tuples = new Tuple[numSlots];
         try{
             // allocate and read the actual records of this page
@@ -63,29 +63,27 @@ public class HeapPage implements Page {
         dis.close();
 
         setBeforeImage();
+    	
+    	this.m_isDirty = false;
+    	this.m_dirtyTid = null;
     }
 
     /** Retrieve the number of tuples on this page.
         @return the number of tuples on this page
     */
-    private int getNumTuples() {
+    private int getNumTuples() {        
         // some code goes here
-        int tupNumPerPage = (int)Math.floor((BufferPool.getPageSize()*8)/(td.getSize()*8+1));
-        return tupNumPerPage;
-
+    	return (int) Math.floor((BufferPool.getPageSize()*8) / (td.getSize() * 8 + 1));
     }
 
     /**
      * Computes the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      * @return the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      */
-    private int getHeaderSize() {
-
-        // some code goes here
-        return (int)Math.ceil((double)this.numSlots/8);
-
+    private int getHeaderSize() {        
+        return (int) Math.ceil(((double) this.getNumTuples()) / 8);
     }
-
+    
     /** Return a view of this page before it was modified
         -- used by recovery */
     public HeapPage getBeforeImage(){
@@ -103,7 +101,7 @@ public class HeapPage implements Page {
         }
         return null;
     }
-
+    
     public void setBeforeImage() {
         synchronized(oldDataLock)
         {
@@ -116,7 +114,8 @@ public class HeapPage implements Page {
      */
     public HeapPageId getId() {
     // some code goes here
-      return pid;
+    // throw new UnsupportedOperationException("implement this");
+    	return pid;
     }
 
     /**
@@ -165,47 +164,64 @@ public class HeapPage implements Page {
      * @return A byte array correspond to the bytes of this page.
      */
     public byte[] getPageData() {
-      int len = BufferPool.getPageSize();
-      ByteArrayOutputStream byteArrOS = new ByteArrayOutputStream(len);
-      DataOutputStream dataOS = new DataOutputStream(byteArrOS);
+        int len = BufferPool.getPageSize();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(len);
+        DataOutputStream dos = new DataOutputStream(baos);
 
-      // create the header of the page
-      for (int i=0; i<header.length; i++) {
+        // create the header of the page
+        for (int i=0; i<header.length; i++) {
+            try {
+                dos.writeByte(header[i]);
+            } catch (IOException e) {
+                // this really shouldn't happen
+                e.printStackTrace();
+            }
+        }
+
+        // create the tuples
+        for (int i=0; i<tuples.length; i++) {
+
+            // empty slot
+            if (!isSlotUsed(i)) {
+                for (int j=0; j<td.getSize(); j++) {
+                    try {
+                        dos.writeByte(0);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+                continue;
+            }
+
+            // non-empty slot
+            for (int j=0; j<td.numFields(); j++) {
+                Field f = tuples[i].getField(j);
+                try {
+                    f.serialize(dos);
+                
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        // padding
+        int zerolen = BufferPool.getPageSize() - (header.length + td.getSize() * tuples.length); //- numSlots * td.getSize();
+        byte[] zeroes = new byte[zerolen];
         try {
-            dataOS.writeByte(header[i]);
+            dos.write(zeroes, 0, zerolen);
         } catch (IOException e) {
             e.printStackTrace();
-            return null;
-        }
-      }
-
-      // create the tuples
-      for (int i=0; i<tuples.length; i++) {
-        // empty slot
-        if (!isSlotUsed(i)) {
-          for (int j=0; j<td.getSize(); j++) {
-            try {
-              dataOS.writeByte(0);
-            } catch (IOException e) {
-              e.printStackTrace();
-              return null;
-            }
-          }
-          continue;
         }
 
-        // non-empty slot
-        for (int j=0; j<td.numFields(); j++) {
-          Field f = tuples[i].getField(j);
-          try {
-            f.serialize(dataOS);
-          } catch (IOException e) {
+        try {
+            dos.flush();
+        } catch (IOException e) {
             e.printStackTrace();
-          }
         }
-      }
 
-      return byteArrOS.toByteArray();
+        return baos.toByteArray();
     }
 
     /**
@@ -219,11 +235,11 @@ public class HeapPage implements Page {
      */
     public static byte[] createEmptyPageData() {
         int len = BufferPool.getPageSize();
-        return new byte[len];
+        return new byte[len]; //all 0
     }
 
     /**
-     * Delete the specified tuple from the page; the corresponding header bit should be updated to reflect
+     * Delete the specified tuple from the page;  the tuple should be updated to reflect
      *   that it is no longer stored on any page.
      * @throws DbException if this tuple is not on this page, or tuple slot is
      *         already empty.
@@ -232,13 +248,18 @@ public class HeapPage implements Page {
     public void deleteTuple(Tuple t) throws DbException {
         // some code goes here
         // not necessary for lab1
-         RecordId rid = t.getRecordId();
-        if((rid.getPageId().getPageNumber() != pid.getPageNumber()) || (rid.getPageId().getTableId() != pid.getTableId()))
-            throw new DbException("tried to delete tuple on invalid page or table");
-        if (!isSlotUsed(rid.getTupleNumber()))
-            throw new DbException("tried to delete null tuple.");
-        markSlotUsed(rid.getTupleNumber(), false);  
-
+    	RecordId ridToDelete = t.getRecordId();
+    	if (ridToDelete == null || !this.pid.equals(ridToDelete.getPageId()))
+    	{
+    		throw new DbException("Tuple not on page.");
+    	}
+    	int slotToEmpty = ridToDelete.getTupleNumber();
+    	if (!isSlotUsed(slotToEmpty))
+    	{
+    		throw new DbException("Tuple slot already empty.");
+    	}
+    	markSlotUsed(slotToEmpty, false);
+    	tuples[slotToEmpty] = null;
     }
 
     /**
@@ -251,25 +272,31 @@ public class HeapPage implements Page {
     public void insertTuple(Tuple t) throws DbException {
         // some code goes here
         // not necessary for lab1
-        if (!t.getTupleDesc().equals(td))
-            throw new DbException("type mismatch, in addTuple");
-
-        int goodSlot = -1;
-        for (int i=0; i<numSlots; i++) {
-            if (!isSlotUsed(i) && goodSlot == -1) {
-                goodSlot = i;
-                break;
-            }
-            
-        }
-        if (goodSlot == -1)
-            throw new DbException("called addTuple on page with no empty slots.");
-
-        markSlotUsed(goodSlot, true);
-        Debug.log(1, "HeapPage.addTuple: new tuple, tableId = %d pageId = %d slotId = %d", pid.getTableId(), pid.getPageNumber(), goodSlot);
-        RecordId rid = new RecordId(pid, goodSlot);
-        t.setRecordId(rid);
-        tuples[goodSlot] = t;
+    	if (!td.equals(t.getTupleDesc()))
+    	{
+    		throw new DbException("TupleDesc mismatch.");
+    	}
+    	int freeSlotNum = -1;
+    	boolean freeSlotFound = false;
+    	for (int i = 0; i < header.length; i++)
+    	{
+    		for (int bitNum = 0; bitNum < 8; bitNum++)
+    		{
+    			freeSlotNum = (i * 8) + bitNum;
+    			if (!isSlotUsed(freeSlotNum))
+    			{
+    				freeSlotFound = true;
+    				break;
+    			}
+    		}
+    		if (freeSlotFound) break;
+    	}
+    	
+    	if (!freeSlotFound || freeSlotNum == -1)
+    		throw new DbException("Page is full.");
+    	t.setRecordId(new RecordId(this.pid, freeSlotNum));
+    	tuples[freeSlotNum] = t;
+    	markSlotUsed(freeSlotNum, true);
     }
 
     /**
@@ -278,9 +305,10 @@ public class HeapPage implements Page {
      */
     public void markDirty(boolean dirty, TransactionId tid) {
         // some code goes here
-        // not necessary for lab1
-        this.isDirty = dirty;
-        if (dirty) this.dirtyTid = tid;
+	// not necessary for lab1
+    	m_isDirty = dirty;
+    	if (dirty)
+    		m_dirtyTid = tid;
     }
 
     /**
@@ -288,12 +316,8 @@ public class HeapPage implements Page {
      */
     public TransactionId isDirty() {
         // some code goes here
-	      // Not necessary for lab1
-        if (this.isDirty)
-            return this.dirtyTid;
-        else
-            return null;
-
+	// Not necessary for lab1
+        return m_isDirty ? m_dirtyTid : null;      
     }
 
     /**
@@ -301,22 +325,35 @@ public class HeapPage implements Page {
      */
     public int getNumEmptySlots() {
         // some code goes here
-        int emptyslots = 0;
-        for (int i = 0; i < numSlots; i++) {
-          if (!(this.isSlotUsed(i))) {
-            emptyslots++;
-          }
+        int count = 0; 
+        for (int i = 0; i< this.getNumTuples(); i++) {
+            if (!this.isSlotUsed(i)) {
+                count++;
+            }
         }
-        return emptyslots;
+        return count;
+    }
+
+    /**
+     * Returns number of available tuples
+    **/
+    public int availableTuples() {
+        return getNumTuples() - getNumEmptySlots();
     }
 
     /**
      * Returns true if associated slot on this page is filled.
      */
     public boolean isSlotUsed(int i) {
-      int headerBit = i % 8;
-      int headerByte = (i - headerBit) / 8;
-      return (header[headerByte] & (1 << headerBit)) != 0;
+        // some code goes here
+    	int byteNum = i / 8;
+    	int bitNum = i % 8;
+        if (byteNum >= header.length || byteNum < 0) {
+            return false;
+        }
+    	byte byteWithSlot = header[byteNum];
+    	int bitmask = 1 << bitNum;
+        return (byteWithSlot&bitmask) > 0;
     }
 
     /**
@@ -325,10 +362,10 @@ public class HeapPage implements Page {
     private void markSlotUsed(int i, boolean value) {
         // some code goes here
         // not necessary for lab1
-        int byteNum = i / 8;
+    	int byteNum = i / 8;
     	int bitNum = i % 8;
-    	
-    	if (isSlotUsed(i) ^ value){  // ^ = XOR
+    	// ^ = exclusive or
+    	if (isSlotUsed(i) ^ value){
     		header[byteNum] ^= (1 << bitNum);
     	}
     }
@@ -341,22 +378,5 @@ public class HeapPage implements Page {
         // some code goes here
         return new HeapPageIterator(this);
     }
-
-    // protected method used by the iterator to get the ith tuple
-    // out of this page
-    Tuple getTuple(int i) throws NoSuchElementException {
-
-        if (i >= tuples.length)
-            throw new NoSuchElementException();
-
-        try {
-            if(!isSlotUsed(i)) {
-                return null;
-            }
-            return tuples[i];
-
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw new NoSuchElementException();
-        }
-    }
 }
+

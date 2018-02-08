@@ -9,9 +9,9 @@ public class Predicate implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private int mem_field;
-    private Op mem_op;
-    private Field mem_operand;
+    private int t_field;
+    private Op t_op;
+    private Field t_operand;
 
     /** Constants used for return codes in Field.compare */
     public enum Op implements Serializable {
@@ -60,9 +60,9 @@ public class Predicate implements Serializable {
      */
     public Predicate(int field, Op op, Field operand) {
         // some code goes here
-        mem_field = field;
-        mem_op = op;
-        mem_operand = operand;
+        t_field = field;
+        t_op = op;
+        t_operand = operand;
     }
 
     /**
@@ -71,7 +71,7 @@ public class Predicate implements Serializable {
     public int getField()
     {
         // some code goes here
-        return mem_field;
+        return t_field;
     }
 
     /**
@@ -80,7 +80,7 @@ public class Predicate implements Serializable {
     public Op getOp()
     {
         // some code goes here
-        return mem_op;
+        return t_op;
     }
     
     /**
@@ -89,7 +89,7 @@ public class Predicate implements Serializable {
     public Field getOperand()
     {
         // some code goes here
-        return mem_operand;
+        return t_operand;
     }
     
     /**
@@ -105,7 +105,7 @@ public class Predicate implements Serializable {
     public boolean filter(Tuple t) {
         // some code goes here
         Field tuple_field = t.getField(getField());
-        return tuple_field.compare(getOp(), mem_operand);
+        return tuple_field.compare(getOp(), t_operand);
     }
 
     /**
@@ -114,6 +114,6 @@ public class Predicate implements Serializable {
      */
     public String toString() {
         // some code goes here
-        return "f = " + mem_field + " op " + mem_op.toString() + " operand " + mem_operand;
+        return "f = " + t_field + " op " + t_op.toString() + " operand " + t_operand;
     }
 }

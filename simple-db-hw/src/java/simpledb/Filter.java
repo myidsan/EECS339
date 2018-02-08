@@ -9,8 +9,8 @@ public class Filter extends Operator {
 
     private static final long serialVersionUID = 1L;
 
-    private Predicate mem_pred;
-    private OpIterator mem_opit;
+    private Predicate pred;
+    private OpIterator op_iter;
 
     /**
      * Constructor accepts a predicate to apply and a child operator to read
@@ -23,36 +23,36 @@ public class Filter extends Operator {
      */
     public Filter(Predicate p, OpIterator child) {
         // some code goes here
-        mem_pred = p;
-        mem_opit = child;
+        pred = p;
+        op_iter = child;
     }
 
     public Predicate getPredicate() {
         // some code goes here
-        return mem_pred;
+        return pred;
     }
 
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return mem_opit.getTupleDesc();
+        return op_iter.getTupleDesc();
     }
 
     public void open() throws DbException, NoSuchElementException,
             TransactionAbortedException {
         // some code goes here
         super.open();
-        mem_opit.open();
+        op_iter.open();
     }
 
     public void close() {
         // some code goes here
         super.close();
-        mem_opit.close();
+        op_iter.close();
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
         // some code goes here
-        mem_opit.rewind();
+        op_iter.rewind();
     }
 
     /**
@@ -67,9 +67,9 @@ public class Filter extends Operator {
     protected Tuple fetchNext() throws NoSuchElementException,
             TransactionAbortedException, DbException {
         // some code goes here
-        while (mem_opit.hasNext()) {
-            Tuple tup = mem_opit.next();
-            if (mem_pred.filter(tup)) {
+        while (op_iter.hasNext()) {
+            Tuple tup = op_iter.next();
+            if (pred.filter(tup)) {
                 return tup;
             }
         }
@@ -79,13 +79,13 @@ public class Filter extends Operator {
     @Override
     public OpIterator[] getChildren() {
         // some code goes here
-        return new  OpIterator[] {mem_opit};
+        return new  OpIterator[] {op_iter};
     }
 
     @Override
     public void setChildren(OpIterator[] children) {
         // some code goes here
-        mem_opit = children[0];
+        op_iter = children[0];
     }
 
 }

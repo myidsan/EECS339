@@ -1,50 +1,32 @@
 package simpledb;
 
 import java.util.*;
-import java.io.*;
 
+public class HeapPageIterator implements Iterator<Tuple> {
 
-class HeapPageIterator implements Iterator<Tuple> {
-    int curTuple = 0;
-    Tuple nextToReturn = null;
-    HeapPage p;
-
-    public HeapPageIterator(HeapPage p) {
-        this.p = p;
+    public HeapPageIterator(HeapPage heapPage) {
+        this.heapPage = heapPage;
+        this.curTuple = 0;
+        this.numTuples = heapPage.availableTuples();
     }
 
     public boolean hasNext() {
-        if (nextToReturn != null)
+        if (this.curTuple < this.numTuples) {
             return true;
-
-        try {
-            while (true) {
-                nextToReturn = p.getTuple(curTuple++);
-                if(nextToReturn != null)
-                    return true;
-            }
-        } catch(NoSuchElementException e) {
+        } else {
             return false;
         }
     }
 
     public Tuple next() {
-        Tuple next = nextToReturn;
-
-        if (next == null) {
-            if (hasNext()) {
-                next = nextToReturn;
-                nextToReturn = null;
-                return next;
-            } else
-                throw new NoSuchElementException();
-        } else {
-            nextToReturn = null;
-            return next;
-        }
+        return heapPage.tuples[this.curTuple++];
     }
 
-    public void remove() {
-        throw new UnsupportedOperationException();
+    public void remove() throws UnsupportedOperationException {
+        throw new UnsupportedOperationException("Cannot remove");
     }
+
+    private HeapPage heapPage; 
+    private int numTuples;
+    private int curTuple;
 }
