@@ -82,13 +82,13 @@ public class IntegerAggregator implements Aggregator {
 
         if (gbfield == NO_GROUPING) {
             if (op == Op.SUM_COUNT)
-        	    td = new TupleDesc(new Type[]{Type.INT_TYPE, Type.INT_TYPE});
+        	    td = new TupleDesc(new Type[] { Type.INT_TYPE, Type.INT_TYPE });
             else
         	    td = new TupleDesc(new Type[] { Type.INT_TYPE });
             aggField = 0;
         } else {
             if (op == Op.SUM_COUNT)
-        	    td = new TupleDesc(new Type[]{gbfieldtype,Type.INT_TYPE, Type.INT_TYPE});
+        	    td = new TupleDesc(new Type[] {gbfieldtype,Type.INT_TYPE, Type.INT_TYPE});
             else
         	    td = new TupleDesc(new Type[] { gbfieldtype, Type.INT_TYPE });
         }

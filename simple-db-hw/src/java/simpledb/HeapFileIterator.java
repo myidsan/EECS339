@@ -3,6 +3,16 @@ package simpledb;
 import java.util.*;
 
 public class HeapFileIterator implements DbFileIterator {
+
+    private boolean opened;
+    private int HeapFileId; 
+    private TransactionId tid;
+    private int curPageNum;
+    private PageId curPageId;
+    private HeapPage curPage;
+    private Iterator<Tuple> curIterator;
+    private int numPages; 
+
     public HeapFileIterator(int HeapFileId, TransactionId tid, int numPages) {
         this.HeapFileId = HeapFileId;
         this.numPages = numPages;
@@ -63,12 +73,4 @@ public class HeapFileIterator implements DbFileIterator {
         this.opened = false;
     }
 
-    private boolean opened;
-    private int HeapFileId; 
-    private TransactionId tid;
-    private int curPageNum;
-    private PageId curPageId;
-    private HeapPage curPage;
-    private Iterator<Tuple> curIterator;
-    private int numPages; 
 }

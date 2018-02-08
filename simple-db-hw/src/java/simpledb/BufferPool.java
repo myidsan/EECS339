@@ -22,8 +22,8 @@ public class BufferPool {
 
     private static int pageSize = PAGE_SIZE;
    
-    private HashMap<PageId, Page> m_cache;
-    private int m_maxNumPages;
+    private HashMap<PageId, Page> t_cache;
+    private int t_maxNumPages;
     
     /** Default number of pages passed to the constructor. This is used by
     other classes. BufferPool should use the numPages argument to the
@@ -36,8 +36,8 @@ public class BufferPool {
      * @param numPages maximum number of pages in this buffer pool.
      */
     public BufferPool(int numPages) {
-        m_maxNumPages = numPages;
-        m_cache = new HashMap<PageId, Page>();        
+        t_maxNumPages = numPages;
+        t_cache = new HashMap<PageId, Page>();        
     }
     
     public static int getPageSize() {
@@ -66,16 +66,16 @@ public class BufferPool {
      */
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
-    	if (m_cache.containsKey(pid)) {
-    		return m_cache.get(pid);
+    	if (t_cache.containsKey(pid)) {
+    		return t_cache.get(pid);
     	}
     	else {
-    		if (m_cache.size() >= m_maxNumPages){
+    		if (t_cache.size() >= t_maxNumPages){
     			evictPage();
     		}
 			DbFile dbfile = Database.getCatalog().getDatabaseFile(pid.getTableId());
 			Page newPage = dbfile.readPage(pid);
-			m_cache.put(pid, newPage);
+			t_cache.put(pid, newPage);
 			return newPage;
     	}
     		
@@ -150,7 +150,7 @@ public class BufferPool {
     	for (Page page : modifiedPages)
     	{
     		page.markDirty(true, tid);
-    		m_cache.put(page.getId(), page);
+    		t_cache.put(page.getId(), page);
     	}
     }
 
@@ -175,7 +175,7 @@ public class BufferPool {
     	for (Page page : modifiedPages)
     	{
     		page.markDirty(true, tid);
-    		m_cache.put(page.getId(), page);
+    		t_cache.put(page.getId(), page);
     	}
     }
 
@@ -187,7 +187,7 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
         // not necessary for lab1
-    	for (PageId pid : m_cache.keySet())
+    	for (PageId pid : t_cache.keySet())
     		flushPage(pid);
     }
 
@@ -208,7 +208,7 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
-    	Page pageToFlush = m_cache.get(pid);
+    	Page pageToFlush = t_cache.get(pid);
     	TransactionId dirtyTransactionId = pageToFlush.isDirty();
     	if (dirtyTransactionId != null)
     	{
@@ -233,12 +233,12 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1
     	boolean pageEvicted = false;
-    	for (PageId pid : m_cache.keySet())
+    	for (PageId pid : t_cache.keySet())
     	{
     		try 
     		{
         		flushPage(pid);
-        		m_cache.remove(pid);
+        		t_cache.remove(pid);
         		pageEvicted = true;
         		break;
     		}
