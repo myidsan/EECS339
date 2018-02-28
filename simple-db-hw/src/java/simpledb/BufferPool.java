@@ -48,6 +48,11 @@ public class BufferPool {
     public static void setPageSize(int pageSize) {
     	BufferPool.pageSize = pageSize;
     }
+    
+    // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
+    public static void resetPageSize() {
+    	BufferPool.pageSize = PAGE_SIZE;
+    }
 
     /**
      * Retrieve the specified page with the associated permissions.

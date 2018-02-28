@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="src" path="java"/>
+	<classpathentry kind="lib" path="/simple-db-hw/lib/zql.jar"/>
+	<classpathentry kind="lib" path="/simple-db-hw/lib/jline-0.9.94.jar"/>
+	<classpathentry kind="src" path="/simple-db-hw"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

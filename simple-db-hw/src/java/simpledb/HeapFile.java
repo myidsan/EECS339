@@ -1,6 +1,7 @@
 package simpledb;
 
 import java.io.*;
+import java.nio.Buffer;
 import java.util.*;
 
 /**
@@ -71,9 +72,9 @@ public class HeapFile implements DbFile {
         // some code goes here
         try {
             RandomAccessFile raf = new RandomAccessFile(this.file,"r");
-            int offset = BufferPool.PAGE_SIZE * pid.getPageNumber();
-            byte[] data = new byte[BufferPool.PAGE_SIZE];
-            if (offset + BufferPool.PAGE_SIZE > file.length()) {
+            int offset = BufferPool.getPageSize() * pid.getPageNumber();
+            byte[] data = new byte[BufferPool.getPageSize()];
+            if (offset + BufferPool.getPageSize() > file.length()) {
                 System.err.println("Page offset exceeds max size, error!");
                 System.exit(1);
             }
@@ -94,9 +95,11 @@ public class HeapFile implements DbFile {
         // not necessary for lab1
     	RandomAccessFile raf = new RandomAccessFile(this.file, "rw");
     	PageId pid = page.getId();
-    	int offset = BufferPool.PAGE_SIZE * pid.getPageNumber();
+    	// int offset = BufferPool.PAGE_SIZE * pid.getPageNumber();
+    	int offset = BufferPool.getPageSize() * pid.getPageNumber();
     	raf.seek(offset);
-    	raf.write(page.getPageData(), 0, BufferPool.PAGE_SIZE);
+    	// raf.write(page.getPageData(), 0, BufferPool.PAGE_SIZE);
+    	raf.write(page.getPageData(), 0, BufferPool.getPageSize());
     	raf.close();
     }
 
@@ -105,7 +108,8 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // some code goes here
-        return (int) Math.ceil(this.file.length()/BufferPool.PAGE_SIZE);
+        // return (int) Math.ceil(this.file.length()/BufferPool.PAGE_SIZE);
+        return (int) Math.ceil(this.file.length()/BufferPool.getPageSize());
     }
 
     // Additional API Implemented
@@ -139,10 +143,12 @@ public class HeapFile implements DbFile {
         newHeapPage.insertTuple(t);
         
         RandomAccessFile raf = new RandomAccessFile(this.file, "rw");
-        int offset = BufferPool.PAGE_SIZE * this.numPages();
+        // int offset = BufferPool.PAGE_SIZE * this.numPages();
+        int offset = BufferPool.getPageSize()* this.numPages();
         raf.seek(offset);
         byte[] newHeapPageData = newHeapPage.getPageData();
-        raf.write(newHeapPageData, 0, BufferPool.PAGE_SIZE);
+        // raf.write(newHeapPageData, 0, BufferPool.PAGE_SIZE);
+        raf.write(newHeapPageData, 0, BufferPool.getPageSize());
         raf.close();
         
         return new ArrayList<Page> (Arrays.asList(newHeapPage));

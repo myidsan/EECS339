@@ -264,6 +264,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 				tid, BTreeRootPtrPage.getId(bigFile.getId()), Permissions.READ_ONLY);
 		BTreeInternalPage root = (BTreeInternalPage) Database.getBufferPool().getPage(
 				tid, rootPtr.getRootId(), Permissions.READ_ONLY);
+		// 122 -> 62 for testing sake. 
 		assertEquals(122, root.getNumEmptySlots());
 
 		BTreeEntry e = root.iterator().next();

@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class Database {
     private static AtomicReference<Database> _instance = new AtomicReference<Database>(new Database());
     private final Catalog _catalog;
-    private final BufferPool _bufferpool;
+    private BufferPool _bufferpool;
 
     private final static String LOGFILENAME = "log";
     private final LogFile _logfile;
@@ -70,7 +70,9 @@ public class Database {
             e.printStackTrace();
         }
 //        _instance._bufferpool = new BufferPool(pages);
+        System.out.println("page size is " + _instance.get()._bufferpool.getPageSize());
         return _instance.get()._bufferpool;
+        // return _bufferpool;
     }
 
     // reset the database, used for unit tests only.
