@@ -1,0 +1,47 @@
+lab3 writeup
+San Lee
+
+[Describe any design decisions you made, including anything that was difficult or unexpected]
+1.findLeafPage
+-if leaf, typecast to BTreeLeafPage and return it.
+-if an internal page, return the page that the field is greater and equal to left.key and less and equal to right.key
+2.splitLeafPage
+-create an empty page for the right sibling and move half of the tuples over to the empty page
+-copy up the middle key to the parent
+-update parent pointers to point to the new left and right children
+-Find the correct page to insert the new tuple by comparing the key to the field
+3.splitInternalPage
+-create an empty page for the right sibling and move half of the tuples over to the empty page
+-copy up the middle key to the parent
+-update parent pointers to point to the new left and right children
+-Find the correct page to insert the new tuple by comparing the key to the field
+4.stealFromLeafPage
+-decide whether to steal from the end of the left child or beginning of the right child
+-make each page is about even after redistribution
+-update the parent so the key points the first entry of the right child 
+5.stealFromLeftInternalPage / stealFromRightInternalPage
+-Move some of the entries from the left/right sibling to the page:
+ Some := ((leftSibling.getNumEntries() - page.getNumEntries()) / 2);
+ to make them evenly distributed
+-move the entry in the left to the parent
+6.mergeLeafPages
+-move all the tuples from the right page to the left page
+-delete the key from the parent
+-reset the pointers between left and right sibling
+7.mergeInternalPages
+-pull down the parent entry and rearrange its pointers
+-move all right entries to the left sibling page
+-get right page ready by setting it an empty page
+-reset parent pointers
+
+
+[Discuss and justify any changes you made outside of BTreeFile.java]
+
+Major change is to change the all methods in HeapFile to use BufferPool.getPageSize() whenever it requires BufferPool.PAGE_SIZE since page size is subject to change for this lab. 
+
+Also, in HeapFile :
+public int numPages() {
+// we only ever write full pages
+	return (int) ((f.length() - BTreeRootPtrPage.getPageSize()) /  BufferPool.getPageSize());
+}
+
