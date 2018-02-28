@@ -271,47 +271,6 @@ public class BTreeFile implements DbFile {
 //        return null;
 
 		// create an empty page for the right sibling and move half of the tuples over to the empty page
-		// BTreeLeafPage right_sib = (BTreeLeafPage) (this.getEmptyPage(tid, dirtypages, BTreePageId.LEAF));
-
-		// // round up the number of tuples to move
-		// int half = page.getNumTuples() / 2;
-		// if (page.getNumTuples() % 2 == 1) {
-		// 	half++;
-		// }
-
-		// Iterator<Tuple> iter = page.reverseIterator();
-		// int count = 0;
-		// Tuple curr = null;
-		// while (iter.hasNext() && count < half) {
-		// 	curr = iter.next();
-		// 	page.deleteTuple(curr);
-		// 	right_sib.insertTuple(curr);
-		// 	count++;
-		// }
-
-		// right_sib.setRightSiblingId(page.getRightSiblingId());
-		// if (page.getRightSiblingId() != null) {
-		// 	BTreeLeafPage prev_right = (BTreeLeafPage) (this.getPage(tid, dirtypages, page.getRightSiblingId(), Permissions.READ_WRITE));
-		// 	prev_right.setLeftSiblingId(right_sib.getId());
-		// }
-
-		// page.setRightSiblingId(right_sib.getId());
-		// right_sib.setLeftSiblingId(page.getId());
-
-		// // copy up the middle key to the parent
-		// Field key = curr.getField(this.keyField);
-		// BTreeInternalPage parent = (BTreeInternalPage) (this.getParentWithEmptySlots(tid, dirtypages, page.getParentId(), field));
-		// parent.insertEntry(new BTreeEntry(key, page.getId(), right_sib.getId()));
-
-		// // update parent pointers
-		// this.updateParentPointers(tid, dirtypages, parent);
-
-		// // find the correct page to insert the new tuple
-		// if (field.compare(Op.LESS_THAN_OR_EQ, key)) {
-		// 	return page;
-		// }
-		// return right_sib;
-
 		BTreeLeafPage right_sib = (BTreeLeafPage) getEmptyPage(tid, dirtypages, BTreePageId.LEAF);
 
 		BTreeLeafPage prev_right = null;
@@ -335,23 +294,26 @@ public class BTreeFile implements DbFile {
 			prev_right.setLeftSiblingId(right_sib.getId());
 		}
 
+		// // copy up the middle key to the parent
 		Field copied = right_sib.iterator().next().getField(keyField);
-
 		BTreeInternalPage parent = getParentWithEmptySlots(tid, dirtypages, page.getParentId(), copied);
 
+		// // update parent pointers
 		page.setParentId(parent.getId());
 		right_sib.setParentId(parent.getId());
-
+		this.updateParentPointers(tid, dirtypages, parent);
+		
 		parent.insertEntry(new BTreeEntry(copied, page.getId(), right_sib.getId()));
 
 		dirtypages.put(parent.getId(), parent);
 		dirtypages.put(page.getId(), page);
 		dirtypages.put(right_sib.getId(), right_sib);
 
-		if (field.compare(Predicate.Op.LESS_THAN, copied)) {
+		// // find the correct page to insert the new tuple
+		if (field.compare(Predicate.Op.LESS_THAN_OR_EQ, copied)) {
 			return page;
 		} 
-		
+
 		return right_sib;
 	}
 	
