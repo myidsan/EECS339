@@ -43,7 +43,7 @@ public class JoinOptimizer {
      *            The right join node's child
      */
     public static OpIterator instantiateJoin(LogicalJoinNode lj,
-                                             OpIterator plan1, OpIterator plan2) throws ParsingException {
+            OpIterator plan1, OpIterator plan2) throws ParsingException {
 
         int t1id = 0, t2id = 0;
         OpIterator j;
@@ -104,14 +104,11 @@ public class JoinOptimizer {
             double cost1, double cost2) {
         if (j instanceof LogicalSubplanJoinNode) {
             // A LogicalSubplanJoinNode represents a subquery.
-            // You do not need to implement proper support for these for Lab 3.
+            // You do not need to implement proper support for these for Lab 5.
             return card1 + cost1 + cost2;
         } else {
-            // Insert your code here.
-            // HINT: You may need to use the variable "j" if you implemented
-            // a join algorithm that's more complicated than a basic
-            // nested-loops join.
-            return -1.0;
+            // Assume nested loops join.
+        	return cost1 + (card1 * cost2) + (card1 * card2);
         }
     }
 
@@ -138,7 +135,7 @@ public class JoinOptimizer {
             boolean t1pkey, boolean t2pkey, Map<String, TableStats> stats) {
         if (j instanceof LogicalSubplanJoinNode) {
             // A LogicalSubplanJoinNode represents a subquery.
-            // You do not need to implement proper support for these for Lab 3.
+            // You do not need to implement proper support for these for Lab 5.
             return card1;
         } else {
             return estimateTableJoinCardinality(j.p, j.t1Alias, j.t2Alias,
@@ -156,7 +153,25 @@ public class JoinOptimizer {
             boolean t2pkey, Map<String, TableStats> stats,
             Map<String, Integer> tableAliasToId) {
         int card = 1;
-        // some code goes here
+        if (joinOp == Predicate.Op.EQUALS ||
+        		joinOp == Predicate.Op.NOT_EQUALS) {
+        	if (t1pkey && t2pkey) {
+        		card = 1;
+        	} else if (t1pkey) {
+        		card = card2;
+        	} else if (t2pkey) {
+        		card = card1;
+        	} else {
+        		card = (card1 > card2) ? card1 : card2;
+        	}
+
+        	if (joinOp == Predicate.Op.NOT_EQUALS) {
+        		card = (card1 * card2) - card;
+        	}
+        } else {
+        	card = 3 * card1 * card2 / 10;
+        }
+
         return card <= 0 ? 1 : card;
     }
 
@@ -217,11 +232,43 @@ public class JoinOptimizer {
             HashMap<String, TableStats> stats,
             HashMap<String, Double> filterSelectivities, boolean explain)
             throws ParsingException {
-        //Not necessary for labs 1--3
+    	PlanCache pc = new PlanCache();
+    	Vector<LogicalJoinNode> optJoinOrder = new Vector<LogicalJoinNode>();
+        for (int i = 1; i <= joins.size(); i++) {
+        	Set<Set<LogicalJoinNode>> sets = this.enumerateSubsets(this.joins, i);
+        	Iterator<Set<LogicalJoinNode>> setsIter = sets.iterator();
+        	while (setsIter.hasNext()) {
+        		Set<LogicalJoinNode> s = setsIter.next();
 
-        // some code goes here
-        //Replace the following
-        return joins;
+        		// Add the set to the cache with max cost to initialize.
+        		pc.addPlan(s, Double.MAX_VALUE, 0, null);
+
+        		Iterator<LogicalJoinNode> it = s.iterator();
+        		while (it.hasNext()) {
+        			LogicalJoinNode toRemove = it.next();
+        			double curCost = pc.getCost(s);
+        			Set<LogicalJoinNode> joinSet = new HashSet<LogicalJoinNode>(s);
+        			joinSet.remove(toRemove);
+        			CostCard card = this.computeCostAndCardOfSubplan(
+        									stats,
+        									filterSelectivities,
+        									toRemove,
+        									joinSet,
+        									curCost,
+        									pc);
+        			if (card != null && card.cost < curCost) {
+        				pc.addPlan(s, card.cost, card.card, card.plan);
+        				optJoinOrder = card.plan;
+        			}
+        		}
+        	}
+        }
+
+        if (explain) {
+        	this.printJoins(this.joins, pc, stats, filterSelectivities);
+        }
+
+        return optJoinOrder;
     }
 
     // ===================== Private Methods =================================

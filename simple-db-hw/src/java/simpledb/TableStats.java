@@ -3,7 +3,10 @@ package simpledb;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
+
+import simpledb.TupleDesc.TDItem;
 
 /**
  * TableStats represents statistics (e.g., histograms) about base tables in a
@@ -66,6 +69,13 @@ public class TableStats {
      */
     static final int NUM_HIST_BINS = 100;
 
+    private int tableid;
+    private int ioCostPerPage;
+    private int total;
+    private ConcurrentHashMap<Integer, IntHistogram> intHists;
+    private ConcurrentHashMap<Integer, StringHistogram> stringHists;
+    private DbFile file;
+
     /**
      * Create a new TableStats object, that keeps track of statistics on each
      * column of a table
@@ -77,14 +87,82 @@ public class TableStats {
      *            sequential-scan IO and disk seeks.
      */
     public TableStats(int tableid, int ioCostPerPage) {
-        // For this function, you'll have to get the
-        // DbFile for the table in question,
-        // then scan through its tuples and calculate
-        // the values that you need.
-        // You should try to do this reasonably efficiently, but you don't
-        // necessarily have to (for example) do everything
-        // in a single scan of the table.
-        // some code goes here
+    	this.tableid = tableid;
+    	this.ioCostPerPage = ioCostPerPage;
+    	this.total = 0;
+    	this.intHists = new ConcurrentHashMap<Integer, IntHistogram>();
+    	this.stringHists = new ConcurrentHashMap<Integer, StringHistogram>();
+    	this.file = Database.getCatalog().getDatabaseFile(this.tableid);
+
+    	try {
+	    	TupleDesc td = this.file.getTupleDesc();
+	
+	    	// Get the mins and the maxes.
+	    	int[] mins = new int[td.numFields()];
+	    	int[] maxes = new int[td.numFields()];
+	    	
+	    	TransactionId tid = new TransactionId();
+	    	DbFileIterator dbIter = file.iterator(tid);
+	    	dbIter.open();
+			while (dbIter.hasNext()) {
+				Tuple t = dbIter.next();
+				Iterator<Field> it = t.fields();
+				for (int i = 0; i < td.numFields(); i++) {
+					Field f = it.next();
+					if (f.getType() == Type.INT_TYPE) {
+						int value = ((IntField) f).getValue();
+						if (value > maxes[i]) {
+							maxes[i] = value;
+						}
+	
+						if (value < mins[i]) {
+							mins[i] = value;
+						}
+					}
+				}
+
+				this.total++;
+			}
+	
+	    	// Instantiate the histograms.
+	    	Iterator<TDItem> tdIter = td.iterator();
+	    	for (int i = 0; i < td.numFields(); i++) {
+	    		if (tdIter.next().fieldType == Type.INT_TYPE) {
+	    			// Use at most NUM_HIST_BINS.
+	    			this.intHists.put(
+	    					 i,
+	    					 new IntHistogram(
+	    							 Math.min(NUM_HIST_BINS, maxes[i] - mins[i] + 1),
+	    							 mins[i],
+	    							 maxes[i]));
+	    		} else {
+	    			this.stringHists.put(i, new StringHistogram(NUM_HIST_BINS));
+	    		}
+	    	}
+	
+	    	// Add all the tuple fields to the corresponding histograms.
+			dbIter.rewind();
+			while (dbIter.hasNext()) {
+				Tuple t = dbIter.next();
+				Iterator<Field> it = t.fields();
+				for (int i = 0; i < td.numFields(); i++) {
+					Field f = it.next();
+					if (f.getType() == Type.INT_TYPE) {
+						this.intHists.get(i).addValue(((IntField) f).getValue());
+					} else {
+						this.stringHists.get(i).addValue(((StringField) f).getValue());
+					}
+				}
+			}
+
+			dbIter.close();
+    	} catch (NoSuchElementException e) {
+    		e.printStackTrace();
+    	} catch (TransactionAbortedException e) {
+    		e.printStackTrace();
+    	} catch (DbException e) {
+			e.printStackTrace();
+		}
     }
 
     /**
@@ -100,8 +178,12 @@ public class TableStats {
      * @return The estimated cost of scanning the table.
      */
     public double estimateScanCost() {
-        // some code goes here
-        return 0;
+    	double numPages =
+    		(1.0 * this.total) *
+    		this.file.getTupleDesc().getSize() /
+    		BufferPool.getPageSize();
+
+		return numPages * this.ioCostPerPage;
     }
 
     /**
@@ -114,8 +196,7 @@ public class TableStats {
      *         selectivityFactor
      */
     public int estimateTableCardinality(double selectivityFactor) {
-        // some code goes here
-        return 0;
+        return (int) (selectivityFactor * this.total);
     }
 
     /**
@@ -147,16 +228,18 @@ public class TableStats {
      *         predicate
      */
     public double estimateSelectivity(int field, Predicate.Op op, Field constant) {
-        // some code goes here
-        return 1.0;
+        if (constant.getType() == Type.INT_TYPE) {
+        	return this.intHists.get(field).estimateSelectivity(op, ((IntField) constant).getValue());
+        } else {
+        	return this.stringHists.get(field).estimateSelectivity(op,((StringField) constant).getValue());
+        }
     }
 
     /**
      * return the total number of tuples in this table
      * */
     public int totalTuples() {
-        // some code goes here
-        return 0;
+        return this.total;
     }
 
 }

@@ -689,8 +689,7 @@ public class BTreeFile implements DbFile {
 		// that the tuples are evenly distributed. Be sure to update
 		// the corresponding parent entry.
 		
-		// steal from the end of the left child 
-		// or beginning of the right child
+		// steal from the end of the left child or beginning of the right child
 		Iterator<Tuple> iter = null;
 		if (isRightSibling) {
 			iter = sibling.iterator();
