@@ -1,0 +1,54 @@
+
+EECS lab4 writeup
+San Lee
+
+%Describe any design decisions you made, including methods for selectivity estimation, as well as any of the bonus exercise you chose to implement and how you implemented them (for each bonus exercise you may submit up to 1 additional page)
+
+Design decisions
+estimateSelectivity of IntHistogram would be used by estimateSelectivity in TableStats
+
+1.IntHistogram
+1)Additional API for estimateSelectivity
+private int findBucket(int v) ⇒ int bucket 
+private double estimateSelectivityEquals(int v) 
+⇒ double estimateSelectivty 
+- branches out from estimateSelectivity and handles equal cases. 
+- divide height (where the bucket is located in the array) by step (range of a single bucket). Divide the previous result  by total_values (total number of values).
+private double estimateSelectivityInequality(Predicate.Op op, int v) 
+⇒ double estimateSelectivty 
+- Handles inequality cases. Further breaks down into each case of the predicate operator
+-  if v is less than the min value, greater should return everything (1.0), less than should return nothing (0.0)
+- if v is greater than the max value, greater should return 0.0, less than return 1.0
+- else, set height to this.buckets[bucket] and calculate the bucket_togo which is the bucket for given value v to be placed at. 
+- selectivity is a double value of (height*bucket_togo) / this.total_values which essentially estimates the relative position of v in the entire data set for table scan to go through.
+- before dividing by total_values, update the value of selectivity until we add all number of values from the bucket_togo to num_buckets (last bucket). 
+- selection estimate process for less is similar to that of greater just flip the logic.
+
+2.TableStats
+1)Constructor
+- Will set the total number of tuples in a given table
+- Declare a DbFileIterator from the file and iterate through the table and put the values in tuple descriptor into two different array mins and maxes. Since we don’t know how many values would fall into each array, their we assume the worst and make them the length of td.numFields. 
+- Create a histogram while iterating through the number of fields in the tuple descriptor.
+- Add the db values into the created histogram using the addValue method we created in IntHistogram. 
+2)estimateScanCost
+- Get the total number of pages in the table and multiply by ioCostPerPage.
+- Get total number of tuples from the constructor and multiply by its size and divide by the pagesize (method in Bufferpool)
+3)estimateTableCardinality
+- Multiply given value for selectivityFactor with total number of tuples
+
+3. Join Cost Optimization
+- Since we assume nested loop joins for the lab, we just have to modify the last return statement to return cost1 + (card1 * cost2) + (card1 * card2) as given in the lab guideline
+- No change for estimateJoinCardinality since no extra credit was done
+
+4. Join Ordering
+1)orderJoins
+Follow the pseudo code outline given in the lab
+Get possible subsets that would be given by pre-defined enumerateSubsets for the given join. 
+Iterate through possible subsets and use computerCostandCardofSubplan method to retrieve the cost of the given subset’s join order. 
+Use PlanCache to store previous joins. Add the set to the cache with max cost to initialize during iteration. Further, if the current join cost is less than the min join cost add the curr cost, card, plan to PlanCache. 
+
+%Describe how long you spent on the lab, and whether there was anything you found particularly difficult or confusing
+1) I worked on this lab for about a week, spending 3 hours a day roughly. Figure 1 was helpful in understanding the flow of the join optimization process of simple-db. Figure 2 was helpful in understanding how to implement IntHistogram. After realizing / visualizing the histogram as a math problem, it was easier to come up with a logic that will distribute values in the database into buckets. 
+2)Implementing the constructor for TableStats was most confusing in lab4. Unlike other constructors, there were more work to do on initializing the table from a given set of data. The most confusing part was creating new IntHistogram and putting it into a concurrenthashmap. 
+3) Implementing orderJoins was confusing. Having pseudocode for the method was helpful, so it was mainly finding where to use the pre-defined methods. 
+

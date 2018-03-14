@@ -69,6 +69,7 @@ public class TableStats {
      */
     static final int NUM_HIST_BINS = 100;
 
+    // initial params for the table
     private int tableid;
     private int ioCostPerPage;
     private int total;
@@ -124,17 +125,14 @@ public class TableStats {
 				this.total++;
 			}
 	
-	    	// Instantiate the histograms.
+	    	// create the histograms.
 	    	Iterator<TDItem> tdIter = td.iterator();
 	    	for (int i = 0; i < td.numFields(); i++) {
 	    		if (tdIter.next().fieldType == Type.INT_TYPE) {
 	    			// Use at most NUM_HIST_BINS.
-	    			this.intHists.put(
-	    					 i,
-	    					 new IntHistogram(
-	    							 Math.min(NUM_HIST_BINS, maxes[i] - mins[i] + 1),
-	    							 mins[i],
-	    							 maxes[i]));
+                    this.intHists.put(i,new IntHistogram(Math.min(NUM_HIST_BINS, maxes[i] - mins[i] + 1),
+                                                        mins[i],
+                                                        maxes[i]));
 	    		} else {
 	    			this.stringHists.put(i, new StringHistogram(NUM_HIST_BINS));
 	    		}
@@ -178,11 +176,7 @@ public class TableStats {
      * @return The estimated cost of scanning the table.
      */
     public double estimateScanCost() {
-    	double numPages =
-    		(1.0 * this.total) *
-    		this.file.getTupleDesc().getSize() /
-    		BufferPool.getPageSize();
-
+    	double numPages = (1.0 * this.total) * this.file.getTupleDesc().getSize() / BufferPool.getPageSize();
 		return numPages * this.ioCostPerPage;
     }
 

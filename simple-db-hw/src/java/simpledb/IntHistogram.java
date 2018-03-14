@@ -93,12 +93,14 @@ public class IntHistogram {
     // added api for equality
     private double estimateSelectivityEquals(int v) {
         int bucket = findBucket(v);
+        // out on index cases
         if (bucket < 0) {
             return 0.0;
         }        	
         if (bucket >= this.num_buckets) {
             return 0.0;
         }        	
+        // estimated cost of finding the v
         int height = this.buckets[bucket];
         return (double) ((double) height/this.step)/this.total_values;
     }

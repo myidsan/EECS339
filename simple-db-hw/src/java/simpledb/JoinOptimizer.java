@@ -104,7 +104,7 @@ public class JoinOptimizer {
             double cost1, double cost2) {
         if (j instanceof LogicalSubplanJoinNode) {
             // A LogicalSubplanJoinNode represents a subquery.
-            // You do not need to implement proper support for these for Lab 5.
+            // You do not need to implement proper support for these for Lab 3.
             return card1 + cost1 + cost2;
         } else {
             // Assume nested loops join.
@@ -135,7 +135,7 @@ public class JoinOptimizer {
             boolean t1pkey, boolean t2pkey, Map<String, TableStats> stats) {
         if (j instanceof LogicalSubplanJoinNode) {
             // A LogicalSubplanJoinNode represents a subquery.
-            // You do not need to implement proper support for these for Lab 5.
+            // You do not need to implement proper support for these for Lab 3.
             return card1;
         } else {
             return estimateTableJoinCardinality(j.p, j.t1Alias, j.t2Alias,
@@ -232,8 +232,10 @@ public class JoinOptimizer {
             HashMap<String, TableStats> stats,
             HashMap<String, Double> filterSelectivities, boolean explain)
             throws ParsingException {
+
     	PlanCache pc = new PlanCache();
-    	Vector<LogicalJoinNode> optJoinOrder = new Vector<LogicalJoinNode>();
+        Vector<LogicalJoinNode> opt_join_order = new Vector<LogicalJoinNode>();
+        
         for (int i = 1; i <= joins.size(); i++) {
         	Set<Set<LogicalJoinNode>> sets = this.enumerateSubsets(this.joins, i);
         	Iterator<Set<LogicalJoinNode>> setsIter = sets.iterator();
@@ -243,22 +245,17 @@ public class JoinOptimizer {
         		// Add the set to the cache with max cost to initialize.
         		pc.addPlan(s, Double.MAX_VALUE, 0, null);
 
-        		Iterator<LogicalJoinNode> it = s.iterator();
-        		while (it.hasNext()) {
-        			LogicalJoinNode toRemove = it.next();
+        		Iterator<LogicalJoinNode> iter = s.iterator();
+        		while (iter.hasNext()) {
+        			LogicalJoinNode toRemove = iter.next();
         			double curCost = pc.getCost(s);
         			Set<LogicalJoinNode> joinSet = new HashSet<LogicalJoinNode>(s);
         			joinSet.remove(toRemove);
         			CostCard card = this.computeCostAndCardOfSubplan(
-        									stats,
-        									filterSelectivities,
-        									toRemove,
-        									joinSet,
-        									curCost,
-        									pc);
+                                        stats, filterSelectivities, toRemove, joinSet, curCost, pc);
         			if (card != null && card.cost < curCost) {
         				pc.addPlan(s, card.cost, card.card, card.plan);
-        				optJoinOrder = card.plan;
+        				opt_join_order = card.plan;
         			}
         		}
         	}
@@ -268,7 +265,7 @@ public class JoinOptimizer {
         	this.printJoins(this.joins, pc, stats, filterSelectivities);
         }
 
-        return optJoinOrder;
+        return opt_join_order;
     }
 
     // ===================== Private Methods =================================
